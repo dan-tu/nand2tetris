@@ -11,13 +11,5 @@ CHIP Not {
     OUT out;
 
     PARTS:
-    /**
-    * Nand truth table
-    * |a|b|out|
-    * |t|t|f| <--- This is the only way to output 0
-    * |t|f|t|
-    * |f|t|t|
-    * |f|f|t|
-    */
     Nand(a=in, b=in, out=out);
 }

@@ -11,5 +11,13 @@ CHIP Xor {
     OUT out;
 
     PARTS:
-    //// Replace this comment with your code.
+    // Condition1: A is true and b is false
+    Not(in=b, out=notb);
+    And(a=a, b=notb, out=cond1);
+
+    // Condition2: B is true and A is false
+    Not(in=a, out=nota);
+    And(a=nota, b=b, out=cond2);
+
+    Or(a=cond1, b=cond2, out=out);
 }
