@@ -1,0 +1,23 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/1/Not.hdl
+/**
+ * Not gate:
+ * if (in) out = 0, else out = 1
+ */
+CHIP Not {
+    IN in;
+    OUT out;
+
+    PARTS:
+    /**
+    * Nand truth table
+    * |a|b|out|
+    * |t|t|f| <--- This is the only way to output 0
+    * |t|f|t|
+    * |f|t|t|
+    * |f|f|t|
+    */
+    Nand(a=in, b=in, out=out);
+}
