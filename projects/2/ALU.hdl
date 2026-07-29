@@ -41,5 +41,37 @@ CHIP ALU {
         ng;      // if (out < 0)  equals 1, else 0
 
     PARTS:
-    //// Replace this comment with your code.
+    // zx and nx
+    Mux16(a=x, b[0..15]=false, sel=zx, out=zxvalue);
+    Not16(in=zxvalue, out=nzxvalue);
+    Mux16(a=zxvalue, b=nzxvalue, sel=nx, out=finalx);
+
+    // zy and ny
+    Mux16(a=y, b[0..15]=false, sel=zy, out=zyvalue);
+    Not16(in=zyvalue, out=nzyvalue);
+    Mux16(a=zyvalue, b=nzyvalue, sel=ny, out=finaly);
+
+    // Route to both x + y and x & y operations.
+    And16(a=finalx, b=finaly, out=andout);
+    Add16(a=finalx, b=finaly, out=addout);
+
+    // Use multiplex to choose output.
+    Mux16(a=andout, b=addout, sel=f, out=almostout);
+
+    // no
+    Not16(in=almostout, out=notalmostout);
+    Mux16(a=almostout, b=notalmostout, sel=no, out=finalout, out[0..7]=outleft, out[8..15]=outright, out[15]=sign);
+
+    // zr
+    Or8Way(in=outleft, out=leftnonzero);
+    Or8Way(in=outright, out=rightnonzero);
+    Or(a=leftnonzero, b=rightnonzero, out=nonzero);
+    Not(in=nonzero, out=zr);
+
+    // ng
+    // If most significant bit is 1
+    And(a=true, b=sign, out=ng);
+
+    // output
+    And16(a[0..15]=true, b=finalout, out=out);
 }
