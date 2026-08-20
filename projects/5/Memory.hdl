@@ -25,5 +25,19 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-	//// Replace this comment with your code.
+    // Screen range:
+    // 0x4000: 0100 0000 0000 0000
+    // 0x5FFF: 0101 1111 1111 1111
+    // Keyboard is at:
+    // 0x6000: 0110 0000 0000 0000
+    DMux(in=load, sel=address[14], a=loadram, b=loadio);
+    DMux(in=loadio, sel=address[13], a=loadscreen);
+
+    RAM16K(in=in, load=loadram, address=address[0..13], out=ramout);
+    Screen(in=in, load=loadscreen, address=address[0..12], out=screenout);
+    Keyboard(out=kbdout);
+
+    // Output routing is same as input
+    Mux16(a=screenout, b=kbdout, sel=address[13], out=ioout);
+    Mux16(a=ramout, b=ioout, sel=address[14], out=out);
 }

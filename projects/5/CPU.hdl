@@ -32,5 +32,48 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-	//// Replace this comment with your code.
+    // Decode
+    // A instruction
+    // 1xxx xxxx xxxx xxxx
+    // C instruction
+    // 111a cccc ccdd djjj
+    // If a=0, use a-register in ALU. Otherwise, feed in M.
+    // If d1, store ALU output in A register.
+    // If d2, store ALU output in D register.
+    // If d3, store ALU output in M (Memory[A]) register.
+    // j1 specifies to jump if value is negative
+    // j2 specifies to jump if value is zero
+    // j3 specifies to jump if value is positive
+    Not(in=instruction[15], out=ainstr); // is A-instruction?
+    Not(in=ainstr, out=cinstr);
+
+    // A register
+    Mux16(a=aluout, b=instruction, sel=ainstr, out=ain);
+    Or(a=ainstr, b=instruction[5], out=loada);
+    ARegister(in=ain, load=loada, out=aout, out[0..14]=addressM);
+
+    // D register
+    And(a=cinstr, b=instruction[4], out=loadd);
+    DRegister(in=aluout, load=loadd, out=dout);
+
+    // Write to m
+    And(a=cinstr, b=instruction[3], out=writeM);
+
+    // ALU
+    // Switch between A and M depending on a-bit of C-instruction
+    Mux16(a=aout, b=inM, sel=instruction[12], out=aorm);
+    ALU(x=dout, y=aorm, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=aluout, out=outM, zr=zr, ng=ng);
+
+    // PC
+    // Increment by default. Load depending on j-bits of C-Instruction
+    And(a=ng, b=instruction[2], out=jumpneg);
+    And(a=zr, b=instruction[1], out=jumpzero);
+    Or(a=ng, b=zr, out=ltezero);
+    Not(in=ltezero, out=pos);
+    And(a=pos, b=instruction[0], out=jumppos);
+    Or(a=jumpneg, b=jumpzero, out=jle);
+    Or(a=jle, b=jumppos, out=jump);
+    And(a=cinstr, b=jump, out=loadpc);
+    Not(in=loadpc, out=incpc);
+    PC(in=aout, load=loadpc, inc=incpc, reset=reset, out[0..14]=pc);
 }
