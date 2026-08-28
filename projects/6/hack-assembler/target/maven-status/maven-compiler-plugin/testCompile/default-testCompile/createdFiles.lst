@@ -1,8 +1,0 @@
-com/dantu/personal/hack/assembler/ParserTest$TestParse.class
-com/dantu/personal/hack/assembler/ParserTest$TestHasMoreCommands$CountingReader.class
-com/dantu/personal/hack/assembler/ParserTest$TestParse$ParseCInstruction.class
-com/dantu/personal/hack/assembler/ParserTest.class
-com/dantu/personal/hack/assembler/ParserTest$TestParse$ParseAInstruction.class
-com/dantu/personal/hack/assembler/ParserTest$TestHasMoreCommands.class
-com/dantu/personal/hack/assembler/ParserTest$TestParse$ParseLInstruction.class
-com/dantu/personal/hack/assembler/ParserTest$TestNormalize.class
