@@ -1,0 +1,188 @@
+package com.dantu.personal.hack.assembler;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+
+/**
+ * Parses the lines of an input stream into `Instruction`s.
+ */
+class Parser implements AutoCloseable {
+    private static final String A_INSTRUCTION_PREFIX = "@";
+    private static final String L_INSTRUCTION_PREFIX = "(";
+    private static final String L_INSTRUCTION_SUFFIX = ")";
+    private final BufferedReader reader;
+    private String nextLine;
+    private Instruction instruction;
+
+    /**
+     * Parses {@code instruction} into an {@code Instruction}. Assumes that
+     * {@code instruction} has
+     * been normalized.
+     */
+    static Instruction parse(String instruction) {
+        if (instruction.startsWith(A_INSTRUCTION_PREFIX)) {
+            return parseAInstruction(instruction);
+        } else if (instruction.startsWith(L_INSTRUCTION_PREFIX)) {
+            return parseLInstruction(instruction);
+        } else {
+            return parseCInstruction(instruction);
+        }
+    }
+
+    private static AInstruction parseAInstruction(String value) {
+        value = value.substring(A_INSTRUCTION_PREFIX.length());
+        if (value.isEmpty()) {
+            throw new SyntaxException("A-instruction is empty");
+        }
+
+        if (Character.isDigit(value.charAt(0))) {
+            boolean allDigits = value.chars().allMatch(Character::isDigit);
+            if (!allDigits) {
+                throw new SyntaxException(
+                        String.format("Found non-digit character in constant: %s", value));
+            }
+        } else {
+            boolean validSymbol = value.chars().allMatch(Parser::isLegalSymbolChar);
+            if (!validSymbol) {
+                throw new SyntaxException(String.format("Invalid character found in symbol: %s", value));
+            }
+        }
+        return new AInstruction(value);
+    }
+
+    private static LInstruction parseLInstruction(String value) {
+        if (!value.endsWith(L_INSTRUCTION_SUFFIX)) {
+            throw new SyntaxException(String.format("Label does not end with ')': %s", value));
+        }
+        value = value.substring(1, value.length() - 1);
+
+        if (value.isEmpty()) {
+            throw new SyntaxException("Label is empty");
+        } else if (Character.isDigit(value.charAt(0))) {
+            throw new SyntaxException(String.format("Label must not begin with a digit: %s", value));
+        } else if (!value.chars().allMatch(Parser::isLegalSymbolChar)) {
+            throw new SyntaxException(String.format("Invalid character found in label: %s", value));
+        }
+
+        return new LInstruction(value);
+    }
+
+    private static CInstruction parseCInstruction(String instruction) {
+        String dest = null;
+        String comp = null;
+        String jump = null;
+
+        for (int i = 0; i < instruction.length(); i++) {
+            int c = instruction.charAt(i);
+            if (c == '=') {
+                if (dest != null || comp != null || jump != null) {
+                    throw new SyntaxException(String.format("Invalid C-instruction: %s", instruction));
+                }
+
+                dest = instruction.substring(0, i);
+                if (dest.isEmpty()) {
+                    throw new SyntaxException(String.format("Empty 'dest' value in instruction: %s", instruction));
+                }
+            } else if (c == ';') {
+                if (comp != null || jump != null) {
+                    throw new SyntaxException(String.format("Invalid C-instruction: %s", instruction));
+                }
+
+                int startingIndex = dest == null ? 0 : dest.length() + 1;
+                comp = instruction.substring(startingIndex, i);
+                if (comp.isEmpty()) {
+                    throw new SyntaxException(String.format("Empty 'comp' value in instruction: %s", instruction));
+                }
+            }
+        }
+
+        if (comp == null) {
+            int startingIndex = dest == null ? 0 : dest.length() + 1;
+            comp = instruction.substring(startingIndex, instruction.length());
+            if (comp.isEmpty()) {
+                throw new SyntaxException(String.format("Empty 'comp' value in instruction: %s", instruction));
+            }
+        } else {
+            int destOffset = dest == null ? 0 : dest.length() + 1;
+            int compOffset = comp.length() + 1;
+            jump = instruction.substring(destOffset + compOffset, instruction.length());
+            if (jump.isEmpty()) {
+                throw new SyntaxException(String.format("Empty 'jump' value in instruction: %s", instruction));
+            }
+        }
+        dest = dest == null ? "" : dest;
+        jump = jump == null ? "" : jump;
+        return new CInstruction(dest, comp, jump);
+    }
+
+    private static boolean isLegalSymbolChar(int c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                || c == '_' || c == '.' || c == '$' || c == ':';
+    }
+
+    /**
+     * Removes comments and whitespace from `s`.
+     */
+    static String normalize(String s) {
+        // Drop any comments first
+        int commentIndex = s.indexOf("//");
+        if (commentIndex > -1) {
+            s = s.substring(0, commentIndex);
+        }
+        return s.replaceAll("\\s+", "");
+    }
+
+    Parser(InputStream inputStream) {
+        InputStreamReader inputStreamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+        this.reader = new BufferedReader(inputStreamReader);
+    }
+
+    Parser(BufferedReader reader) {
+        this.reader = reader;
+    }
+
+    /**
+     * @return true if the input stream has more commands to parse
+     */
+    boolean hasMoreCommands() {
+        if (nextLine != null)
+            return true;
+
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String normalized = normalize(line);
+                if (!normalized.isEmpty()) {
+                    nextLine = normalized;
+                    return true;
+                }
+            }
+            return false;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to read from input stream", e);
+        }
+    }
+
+    /**
+     * Parses the next line in the input stream.
+     */
+    void advance() throws SyntaxException {
+        String currLine = nextLine;
+        Instruction instruction = parse(currLine);
+        this.nextLine = null;
+        this.instruction = instruction;
+    }
+
+    Instruction getInstruction() {
+        return this.instruction;
+    }
+
+    @Override
+    public void close() throws Exception {
+        this.reader.close();
+    }
+}
